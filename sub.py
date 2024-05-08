@@ -4,12 +4,12 @@ import sys
 import zmq
 
 # Definindo a porta 
-port = "5557"
+Broker_port = "5559"
 
 # Verifica se foi passada uma porta como argumento de linha de comando
 if len(sys.argv) > 1:
-    port = sys.argv[1]
-    int(port)  
+    Broker_port = sys.argv[1]
+    int(Broker_port)  
 
 # Criando um contexto zmq
 context = zmq.Context()
@@ -19,14 +19,13 @@ socket = context.socket(zmq.SUB)
 
 print("Aguardando atualizações do chat...")
 
-# Vinculando o socket ao endereço TCP local e à porta especificada
-socket.bind("tcp://127.0.0.1:%s" % port)
+# Conectando o socket ao endereço TCP do broker
+socket.connect("tcp://127.0.0.1:{0}".format(Broker_port))
 
 # Definindo um filtro de tópico para o assinante
-topicfilter = "alo"
+topicfilter = input("inscreva-se em um topico: ")
 socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
 
-# Processando 5 atualizações
 total_value = 0 
 while(True):
     # Recebendo a mensagem do socket
