@@ -1,40 +1,30 @@
-import sys
 import zmq
-import pub
+import sys
+import cv2
+import base64
+import numpy as np
 
-messagedata = ""
-nomeClient = ""
+context = zmq.Context()
+client_socket = context.socket(zmq.SUB)
+client_socket.connect("tcp://127.0.0.1:5559")
+client_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
 def Subscriber():
-    Broker_port = "5559"
-    # Verifica se foi passada uma porta como argumento de linha de comando
-    if len(sys.argv) > 1:
-        Broker_port = sys.argv[1]
-        int(Broker_port)  
+    string = client_socket.recv_string()
+    topic, message_type, message, nome = string.split(" ", 3)
+    return '{} {} {} {}'.format(topic, message_type, message, nome)
 
-    # Criando um contexto zmq
-    context = zmq.Context()
+def handle_video_message(message):
+    parts = message.split()
+    frame_data = parts[0]
+    frame_array = cv2.imdecode(np.frombuffer(base64.b64decode(frame_data), dtype=np.uint8), cv2.IMREAD_COLOR)
+    cv2.imshow("client image", frame_array)
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):
+        cv2.destroyAllWindows()
 
-    # Criando um socket do tipo SUB (assinante)
-    socket = context.socket(zmq.SUB)
-
-    print("Aguardando atualizações do chat...")
-
-    # Conectando o socket ao endereço TCP do broker
-    socket.connect("tcp://127.0.0.1:{0}".format(Broker_port))
-
-    # Definindo um filtro de tópico para o assinante
-    topicfilter = pub.topic
-    socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
-
-    # Recebendo a mensagem do socket
-    string = str(socket.recv())
-    parts = string.split()
-    if len(parts) > 3:
-        topic = parts[0]
-        messagedata = " ".join(parts[1:len(parts)-1])  # do segundo ao penultimo
-        nomeClient = "".join(parts[len(parts)-1])  # ultimo elemento
-    else:
-        topic, messagedata, nomeClient = string.split()
-
-    return '{}: {}'.format(nomeClient, messagedata)
+if __name__ == "__main__":
+    while True:
+        message = Subscriber()
+        if message.split()[1] == "VIDEO":
+            handle_video_message(message.split()[2])
